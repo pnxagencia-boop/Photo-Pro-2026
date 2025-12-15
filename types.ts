@@ -30,6 +30,7 @@ export interface AppState {
   selectedFoodType: FoodType | "";
   aspectRatio: AspectRatio;
   enhancements: EnhancementOption[];
+  userDescription: string;
   isProcessing: boolean;
   isComplete: boolean;
   generatedPrompt: string;

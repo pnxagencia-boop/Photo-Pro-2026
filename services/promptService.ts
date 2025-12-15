@@ -12,6 +12,10 @@ export const generatePrompt = (state: AppState): string => {
     .map(e => e.label)
     .join(", ");
 
+  const userCustomInstructions = state.userDescription 
+    ? `- INSTRUÇÕES EXTRAS DO USUÁRIO: ${state.userDescription}`
+    : "";
+
   const prompt = `
     [CONTEXTO]: O usuário enviou uma foto de ${state.selectedFoodType || "alimento"}.
     [PROMPT PRINCIPAL]: ${BASE_PROMPT_CORE}
@@ -19,8 +23,9 @@ export const generatePrompt = (state: AppState): string => {
     - Tipo de Alimento: ${state.selectedFoodType}
     - Melhorias Solicitadas: ${activeEnhancements}
     - Proporção Final: ${state.aspectRatio}
+    ${userCustomInstructions}
     
-    Instruction: Generate a high-quality, photorealistic image based on the input image and the description above. Ensure the main food item remains the protagonist and looks exactly as described.
+    Instruction: Generate a high-quality, photorealistic image based on the input image and the description above. Ensure the main food item remains the protagonist and looks exactly as described. Pay special attention to the user's custom instructions if provided.
   `.trim();
 
   console.log("--- PROMPT GERADO ---");

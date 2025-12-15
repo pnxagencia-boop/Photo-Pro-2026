@@ -12,6 +12,7 @@ const INITIAL_STATE: AppState = {
   selectedFoodType: "",
   aspectRatio: AspectRatio.STORY,
   enhancements: DEFAULT_ENHANCEMENTS,
+  userDescription: "",
   isProcessing: false,
   isComplete: false,
   generatedPrompt: "",

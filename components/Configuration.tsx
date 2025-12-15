@@ -24,6 +24,10 @@ export const Configuration: React.FC<ConfigurationProps> = ({ state, updateState
     updateState({ aspectRatio: ratio });
   };
 
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateState({ userDescription: e.target.value });
+  };
+
   const isFormValid = state.imageFile !== null && state.selectedFoodType !== "";
 
   return (
@@ -74,6 +78,19 @@ export const Configuration: React.FC<ConfigurationProps> = ({ state, updateState
               </label>
             ))}
           </div>
+        </div>
+
+        <div>
+           <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+            <span className="flex items-center justify-center w-6 h-6 rounded-full border border-gray-600 text-gray-400 text-xs font-bold mr-3">i</span>
+            Instruções Adicionais (Opcional)
+          </h2>
+          <textarea
+            value={state.userDescription}
+            onChange={handleDescriptionChange}
+            placeholder="Ex: Quero um ambiente mais rústico com madeira escura, ou adicione mais vapor saindo do prato..."
+            className="w-full bg-surface border border-border text-white rounded-lg p-4 focus:outline-none focus:border-primary transition-colors resize-none h-32 text-sm placeholder-gray-600"
+          />
         </div>
       </div>
 

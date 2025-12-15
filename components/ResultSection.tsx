@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AppState } from '../types';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { AppState, AspectRatio } from '../types';
 
 interface ResultSectionProps {
   state: AppState;
@@ -8,6 +8,9 @@ interface ResultSectionProps {
 
 export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [sliderPosition, setSliderPosition] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Simulate progress bar during processing
   useEffect(() => {
@@ -22,8 +25,54 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) 
       return () => clearInterval(interval);
     } else if (state.isComplete) {
       setLoadingProgress(100);
+      setSliderPosition(50); // Reset slider to center
     }
   }, [state.isProcessing, state.isComplete]);
+
+  // Comparison Slider Logic
+  const handleMove = useCallback((clientX: number) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+      const percentage = (x / rect.width) * 100;
+      setSliderPosition(percentage);
+    }
+  }, []);
+
+  const handleMouseDown = () => setIsDragging(true);
+  const handleMouseUp = () => setIsDragging(false);
+  
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging) handleMove(e.clientX);
+  }, [isDragging, handleMove]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    handleMove(e.touches[0].clientX);
+  }, [handleMove]);
+
+  // Global event listeners for dragging outside container
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchend', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging]);
+
+
+  // Helper to get aspect ratio class
+  const getAspectRatioClass = (ratio: AspectRatio) => {
+    switch (ratio) {
+      case AspectRatio.SQUARE: return 'aspect-square max-w-[500px]';
+      case AspectRatio.PORTRAIT: return 'aspect-[4/5] max-w-[450px]';
+      case AspectRatio.STORY: return 'aspect-[9/16] max-w-[350px]';
+      case AspectRatio.LANDSCAPE: return 'aspect-video max-w-[700px]';
+      default: return 'aspect-[4/5] max-w-[450px]';
+    }
+  };
 
   if (!state.isProcessing && !state.isComplete) return null;
 
@@ -54,44 +103,89 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) 
           </div>
         </div>
       ) : (
-        <div className="w-full max-w-6xl mx-auto animate-fade-in-up">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-white">Resultado Profissional</h2>
+        <div className="w-full h-full flex flex-col items-center py-8 animate-fade-in-up">
+          
+          {/* Header */}
+          <div className="w-full max-w-4xl flex justify-between items-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-white">Resultado Profissional</h2>
             <button 
               onClick={onReset}
               className="text-gray-400 hover:text-white transition-colors flex items-center text-sm"
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              Fechar / Nova Foto
+              Fechar
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Original */}
-            <div className="space-y-4">
-               <span className="inline-block px-3 py-1 bg-gray-800 rounded text-xs text-gray-400 font-bold uppercase tracking-wider">Original</span>
-               <div className="relative w-full rounded-xl overflow-hidden shadow-2xl bg-surface aspect-[4/5] flex items-center justify-center">
-                 <img src={state.imagePreviewUrl || ''} alt="Original" className="max-w-full max-h-full object-contain" />
-               </div>
-            </div>
+          {/* Comparison Slider Area */}
+          <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 mb-8">
+            <div 
+              ref={containerRef}
+              className={`relative w-full ${getAspectRatioClass(state.aspectRatio)} rounded-xl overflow-hidden shadow-[0_0_50px_rgba(255,106,0,0.1)] bg-surface border border-gray-800 select-none cursor-ew-resize`}
+              onMouseMove={handleMouseMove}
+              onTouchMove={handleTouchMove}
+              onMouseDown={handleMouseDown}
+            >
+              
+              {/* Layer 1: Edited Image (Background - Shows on Right) */}
+              <img 
+                src={state.resultImageUrl || ''} 
+                alt="Depois" 
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              />
+              
+              {/* Label: Depois */}
+              <div className="absolute top-4 right-4 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs font-bold text-primary uppercase z-10 pointer-events-none">
+                Depois
+              </div>
 
-            {/* Result */}
-            <div className="space-y-4">
-               <span className="inline-block px-3 py-1 bg-primary text-black rounded text-xs font-bold uppercase tracking-wider">Photo Run AI</span>
-               <div className="relative w-full rounded-xl overflow-hidden shadow-[0_0_50px_rgba(255,106,0,0.15)] bg-surface aspect-[4/5] flex items-center justify-center group">
-                 <img src={state.resultImageUrl || ''} alt="Processed" className="w-full h-full object-cover" />
-                 
-                 {/* Flash overlay effect on load */}
-                 <div className="absolute inset-0 bg-white opacity-0 animate-[flash_1s_ease-out_1]"></div>
-               </div>
+              {/* Layer 2: Original Image (Foreground - Shows on Left based on width) */}
+              <div 
+                className="absolute inset-0 h-full overflow-hidden border-r-2 border-primary/80 bg-surface"
+                style={{ width: `${sliderPosition}%` }}
+              >
+                <img 
+                  src={state.imagePreviewUrl || ''} 
+                  alt="Antes" 
+                  className="absolute top-0 left-0 w-full h-full object-cover max-w-none pointer-events-none" 
+                  style={{ width: containerRef.current?.offsetWidth }} // Keep width fixed to container width to align pixels
+                />
+                 {/* Label: Antes */}
+                <div className="absolute top-4 left-4 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs font-bold text-white uppercase z-10 pointer-events-none">
+                  Original
+                </div>
+              </div>
+
+              {/* Slider Handle */}
+              <div 
+                className="absolute inset-y-0 w-10 -ml-5 flex items-center justify-center z-20 pointer-events-none"
+                style={{ left: `${sliderPosition}%` }}
+              >
+                <div className="w-8 h-8 rounded-full bg-primary shadow-lg border-2 border-white flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 17h8" /> 
+                    {/* Simple grip icon */}
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Flash effect on load */}
+              <div className="absolute inset-0 bg-white opacity-0 animate-[flash_1s_ease-out_1] pointer-events-none"></div>
             </div>
+            
+            <p className="mt-4 text-gray-500 text-sm flex items-center">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+              Arraste para comparar
+            </p>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 w-full max-w-4xl">
             <a 
               href={state.resultImageUrl || '#'} 
               download={`photorun-${Date.now()}.jpg`}
-              className="w-full md:w-auto px-8 py-4 bg-primary text-white font-bold rounded-full hover:bg-orange-600 hover:scale-105 transition-all flex items-center justify-center shadow-lg shadow-primary/20"
+              className="w-full md:w-auto px-10 py-4 bg-primary text-white font-bold rounded-full hover:bg-orange-600 hover:scale-105 transition-all flex items-center justify-center shadow-lg shadow-primary/20"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Baixar Imagem Profissional
@@ -104,13 +198,6 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) 
             </button>
           </div>
           
-          {/* Debug Info for Developers */}
-          <div className="mt-12 p-4 bg-gray-900 rounded-lg border border-gray-800">
-             <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Prompt Gerado (Simulação Backend)</h4>
-             <p className="text-xs text-gray-400 font-mono leading-relaxed opacity-70">
-                {state.generatedPrompt}
-             </p>
-          </div>
         </div>
       )}
     </div>
