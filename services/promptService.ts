@@ -100,3 +100,56 @@ export const generateEnhancedImage = async (state: AppState): Promise<string> =>
         throw error;
     }
 };
+
+/**
+ * Refines an existing generated image based on user instructions.
+ */
+export const refineImage = async (currentImageDataUrl: string, instruction: string): Promise<string> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        
+        // Extract base64 data from Data URL
+        // Expect format: data:image/png;base64,.....
+        const matches = currentImageDataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+        
+        if (!matches || matches.length !== 3) {
+            throw new Error("Dados da imagem inválidos para refinamento.");
+        }
+        
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+
+        console.log("Enviando refinamento para Gemini API...");
+        const editPrompt = `Edit this image based on the following instruction: "${instruction}". Maintain the high-quality, photorealistic editorial food photography style. Do not change the aspect ratio.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    { 
+                        inlineData: { 
+                            mimeType: mimeType, 
+                            data: base64Data 
+                        } 
+                    },
+                    { text: editPrompt }
+                ]
+            }
+        });
+
+        if (response.candidates && response.candidates[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData && part.inlineData.data) {
+                    const respMimeType = part.inlineData.mimeType || 'image/png';
+                    return `data:${respMimeType};base64,${part.inlineData.data}`;
+                }
+            }
+        }
+        
+        throw new Error("Falha ao refinar a imagem.");
+
+    } catch (error) {
+        console.error("Gemini API Refine Error:", error);
+        throw error;
+    }
+};

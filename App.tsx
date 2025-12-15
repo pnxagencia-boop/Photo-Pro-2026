@@ -3,8 +3,10 @@ import { Hero } from './components/Hero';
 import { UploadZone } from './components/UploadZone';
 import { Configuration } from './components/Configuration';
 import { ResultSection } from './components/ResultSection';
-import { generatePrompt, generateEnhancedImage } from './services/promptService';
-import { AppState, DEFAULT_ENHANCEMENTS, AspectRatio } from './types';
+import { PaymentModal } from './components/PaymentModal';
+import { generatePrompt, generateEnhancedImage, refineImage } from './services/promptService';
+import { validatePaymentProof } from './services/paymentService';
+import { AppState, DEFAULT_ENHANCEMENTS, AspectRatio, PaymentStatus } from './types';
 
 const INITIAL_STATE: AppState = {
   imageFile: null,
@@ -13,6 +15,13 @@ const INITIAL_STATE: AppState = {
   aspectRatio: AspectRatio.STORY,
   enhancements: DEFAULT_ENHANCEMENTS,
   userDescription: "",
+  
+  // Payment
+  paymentStatus: PaymentStatus.IDLE,
+  proofFile: null,
+  proofPreviewUrl: null,
+  paymentErrorMessage: null,
+
   isProcessing: false,
   isComplete: false,
   generatedPrompt: "",
@@ -36,21 +45,71 @@ const App: React.FC = () => {
     updateState({ 
       imageFile: file, 
       imagePreviewUrl: previewUrl,
-      // Reset result if new file
+      // Reset result and payment if new file
       isComplete: false,
-      resultImageUrl: null
+      resultImageUrl: null,
+      paymentStatus: PaymentStatus.IDLE,
+      proofFile: null,
+      proofPreviewUrl: null
     });
   };
 
-  const handleGenerate = async () => {
+  // Step 1: User clicks "Proceed to Payment"
+  const handleStartPayment = () => {
     if (!state.imageFile) return;
+    updateState({ paymentStatus: PaymentStatus.PENDING });
+  };
+
+  // Step 2: User Uploads Proof
+  const handleProofUpload = (file: File) => {
+     const preview = URL.createObjectURL(file);
+     updateState({
+       proofFile: file,
+       proofPreviewUrl: preview,
+       paymentErrorMessage: null
+     });
+  };
+
+  // Step 3: User Confirms Payment -> Validate with AI
+  const handleVerifyPayment = async () => {
+    if (!state.proofFile) return;
+
+    updateState({ paymentStatus: PaymentStatus.VALIDATING, paymentErrorMessage: null });
+
+    const validation = await validatePaymentProof(state.proofFile);
+
+    if (validation.isValid) {
+       // Payment Success! Start generation automatically.
+       updateState({ paymentStatus: PaymentStatus.PAID });
+       // Close modal logic is handled by status check in render or we can explicitly generate now
+       await handleGenerate(true);
+    } else {
+       // Payment Failed
+       updateState({ 
+         paymentStatus: PaymentStatus.PENDING, // Go back to pending to allow retry
+         paymentErrorMessage: validation.reason || "Não foi possível identificar o pagamento de R$ 1,00. Tente novamente."
+       });
+    }
+  };
+
+  // Step 4: Generate Image (called after payment success)
+  const handleGenerate = async (skipPaymentCheck = false) => {
+    if (!state.imageFile) return;
+    
+    // Safety check just in case
+    if (!skipPaymentCheck && state.paymentStatus !== PaymentStatus.PAID) {
+        alert("Pagamento necessário.");
+        return;
+    }
 
     // 1. Generate Prompt for UI display
     const prompt = generatePrompt(state);
     updateState({ 
       isProcessing: true, 
       generatedPrompt: prompt,
-      isComplete: false
+      isComplete: false,
+      // Ensure modal is closed visually by setting status to PAID (which returns null in Modal component)
+      paymentStatus: PaymentStatus.PAID 
     });
 
     try {
@@ -69,6 +128,32 @@ const App: React.FC = () => {
       
       // Generic error message for user
       alert("Ocorreu um erro ao processar a imagem com a IA. Verifique sua conexão ou tente outra foto.");
+    }
+  };
+
+  const handleRefine = async (instruction: string) => {
+    if (!state.resultImageUrl) return;
+    
+    // Set processing to true to show loading screen again
+    updateState({ 
+      isProcessing: true, 
+      isComplete: false 
+    });
+    
+    try {
+        const newResultUrl = await refineImage(state.resultImageUrl, instruction);
+        updateState({ 
+            isProcessing: false,
+            isComplete: true,
+            resultImageUrl: newResultUrl 
+        });
+    } catch (error) {
+        console.error("Refine error", error);
+        updateState({ 
+          isProcessing: false,
+          isComplete: true // Go back to showing the previous result if fail
+        });
+        alert("Erro ao refinar a imagem. Tente novamente.");
     }
   };
 
@@ -102,7 +187,7 @@ const App: React.FC = () => {
                <Configuration 
                  state={state} 
                  updateState={updateState} 
-                 onGenerate={handleGenerate}
+                 onGenerate={handleStartPayment} // Trigger Payment Flow
                />
              </div>
            )}
@@ -114,8 +199,24 @@ const App: React.FC = () => {
          <p className="text-gray-600 text-sm">© 2024 Photo Run. Transformando fotos em vendas.</p>
       </footer>
 
-      {/* Overlays */}
-      <ResultSection state={state} onReset={handleReset} />
+      {/* Modals & Overlays */}
+      
+      {/* Payment Modal */}
+      <PaymentModal 
+         status={state.paymentStatus}
+         proofPreview={state.proofPreviewUrl}
+         errorMessage={state.paymentErrorMessage}
+         onClose={() => updateState({ paymentStatus: PaymentStatus.IDLE })}
+         onUploadProof={handleProofUpload}
+         onConfirmPayment={handleVerifyPayment}
+      />
+
+      {/* Result Overlay */}
+      <ResultSection 
+        state={state} 
+        onReset={handleReset} 
+        onRefine={handleRefine}
+      />
     </div>
   );
 };

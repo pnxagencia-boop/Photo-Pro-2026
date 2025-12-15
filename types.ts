@@ -18,6 +18,14 @@ export enum AspectRatio {
   LANDSCAPE = "16:9"
 }
 
+export enum PaymentStatus {
+  IDLE = "IDLE",
+  PENDING = "PENDING", // User is looking at Pix screen
+  VALIDATING = "VALIDATING", // AI is checking receipt
+  PAID = "PAID",
+  ERROR = "ERROR"
+}
+
 export interface EnhancementOption {
   id: string;
   label: string;
@@ -31,6 +39,14 @@ export interface AppState {
   aspectRatio: AspectRatio;
   enhancements: EnhancementOption[];
   userDescription: string;
+  
+  // Payment State
+  paymentStatus: PaymentStatus;
+  proofFile: File | null;
+  proofPreviewUrl: string | null;
+  paymentErrorMessage: string | null;
+
+  // Processing State
   isProcessing: boolean;
   isComplete: boolean;
   generatedPrompt: string;

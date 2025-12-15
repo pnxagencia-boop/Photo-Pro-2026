@@ -4,12 +4,14 @@ import { AppState, AspectRatio } from '../types';
 interface ResultSectionProps {
   state: AppState;
   onReset: () => void;
+  onRefine: (instruction: string) => void;
 }
 
-export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) => {
+export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset, onRefine }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  const [refineText, setRefineText] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Simulate progress bar during processing
@@ -50,6 +52,13 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) 
     handleMove(e.touches[0].clientX);
   }, [handleMove]);
 
+  const handleRefineSubmit = () => {
+    if (refineText.trim()) {
+      onRefine(refineText);
+      setRefineText(""); // Clear input after submit
+    }
+  };
+
   // Global event listeners for dragging outside container
   useEffect(() => {
     if (isDragging) {
@@ -87,8 +96,12 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) 
           </div>
           
           <div>
-            <h3 className="text-2xl font-bold text-white mb-2">Processando...</h3>
-            <p className="text-gray-400">Estamos criando uma imagem que vende.</p>
+            <h3 className="text-2xl font-bold text-white mb-2">
+               {state.resultImageUrl ? "Refinando sua imagem..." : "Processando..."}
+            </h3>
+            <p className="text-gray-400">
+               {state.resultImageUrl ? "Aplicando os ajustes solicitados." : "Estamos criando uma imagem que vende."}
+            </p>
           </div>
 
           <div className="w-full bg-gray-900 rounded-full h-2 overflow-hidden">
@@ -178,6 +191,33 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ state, onReset }) 
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
               Arraste para comparar
             </p>
+          </div>
+
+           {/* Refinement Section */}
+           <div className="w-full max-w-2xl mb-8 animate-fade-in-up" style={{animationDelay: '0.1s'}}>
+            <div className="bg-surface border border-gray-800 rounded-xl p-4 flex flex-col md:flex-row gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-gray-400 mb-1 ml-1 uppercase">Ajustes & Edição</label>
+                <input 
+                  type="text" 
+                  value={refineText}
+                  onChange={(e) => setRefineText(e.target.value)}
+                  placeholder="Ex: Adicionar talheres, remover o guardanapo, escurecer o fundo..."
+                  className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  onKeyDown={(e) => e.key === 'Enter' && handleRefineSubmit()}
+                />
+              </div>
+              <div className="flex items-end">
+                <button 
+                  onClick={handleRefineSubmit}
+                  disabled={!refineText.trim()}
+                  className="w-full md:w-auto h-[46px] px-6 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center whitespace-nowrap"
+                >
+                  <svg className="w-4 h-4 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  Refinar
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}

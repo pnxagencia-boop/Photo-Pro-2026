@@ -140,19 +140,19 @@ export const Configuration: React.FC<ConfigurationProps> = ({ state, updateState
               ${!isFormValid ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-400 rounded-full transition-all duration-300 group-hover:scale-105 group-hover:opacity-100"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-green-700 rounded-full transition-all duration-300 group-hover:scale-105 group-hover:opacity-100"></div>
             <div className="relative bg-black rounded-full px-8 py-4 flex items-center justify-center transition-all group-hover:bg-transparent">
                <span className={`text-lg font-bold uppercase tracking-wider transition-colors ${!isFormValid ? 'text-gray-500' : 'text-white group-hover:text-black'}`}>
-                 Transformar Minha Foto
+                 Prosseguir para Pagamento
                </span>
                {isFormValid && (
-                 <svg className="w-5 h-5 ml-2 text-white group-hover:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                 <svg className="w-5 h-5 ml-2 text-white group-hover:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                )}
             </div>
           </button>
           
           <p className="text-center text-xs text-gray-600 mt-4">
-            Ao clicar, você concorda que estamos criando uma imagem que vende.
+            Total: R$ 1,00 - Investimento na sua imagem profissional.
           </p>
         </div>
       </div>
